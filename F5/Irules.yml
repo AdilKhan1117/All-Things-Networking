@@ -1,0 +1,40 @@
+when CLIENT_ACCEPTED {
+   set DEBUG 1
+   # Set to 0 to turn debug off
+   # Set to 1 to turn debug on
+}
+when CLIENTSSL_CLIENTCERT {
+   set DEBUG 1
+   if {[SSL::cert 0] eq ""}{
+      if { $DEBUG } {
+         log local0. "F5-ERROR: No client Certificate received from: [IP::client_addr]"
+      }
+      event disable all
+      # Check if client is presenting a certificate on the inital SSL request, if they are not drop the connection.
+
+   } else {
+      set cert_subject [X509::subject [SSL::cert 0]]
+      set cn [findstr $cert_subject "CN=" 3]
+       log local0. "F5-DEBUG: The X509 subject for the cert is [X509::subject [SSL::cert 0]]"
+       log local0. "F5-DEBUG: The CN for the cert is $cn"
+   }
+}
+
+when HTTP_REQUEST {
+    if { [ HTTP::header exists X-Forwarded-Host-chkd] } {
+        HTTP::header remove X-Forwarded-Host-chkd
+    }
+	set DEBUG 1
+    HTTP::header insert X-Forwarded-Host-chkd $cn
+    log local0. "AMENDED HTTP X-Forwarded-Host-chkd = [HTTP::header value "X-Forwarded-Host-chkd"]"
+}
+
+
+########################################################################
+#    NAME : Cert iRule                                                 #
+#                                                                      #
+# USED BY : xxx                                                        #
+#    V1.1 : Initial iRule creation                                     #
+#                                                                      #
+#                                                                      #
+########################################################################
